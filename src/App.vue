@@ -1,15 +1,15 @@
 <template>
   <div id="app">
-    <search-v2></search-v2>
+    <search-v3></search-v3>
   </div>
 </template>
 <script>
-import searchV2 from './searchV2'
+import searchV3 from './searchV3'
 
 export default {
   name: 'App',
   components: {
-    searchV2
+    searchV3
   }
 }
 </script>
