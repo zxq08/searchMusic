@@ -2,21 +2,19 @@
   <div>
     <div class="input-wrap">
       <i class="iconfont icon-sousuo"></i>
-      <input class="search-input" type="text" v-model="searchName" name="" id="" placeholder="搜索歌曲">
-      <i class="iconfont icon-guanbi" v-if="searchName"></i>
-      <!-- <input class="search-input" type="text" v-model="searchName" name="" id="" placeholder="搜索歌曲" @input="inputSearch" @keyup.13="search">
-      <i class="iconfont icon-guanbi" v-if="searchName" @click="clearSearch"></i> -->
+      <input class="search-input" type="text" v-model="searchName" name="" id="" placeholder="搜索歌曲" @input="inputSearch" @keyup.13="search">
+      <i class="iconfont icon-guanbi" v-if="searchName" @click="clearSearch"></i>
     </div>
     <template v-if="searchType == 1">
-      <!-- <div class="history-wrap">
+      <div class="history-wrap">
         <div class="history-header">
           <div class="history-title">历史记录</div>
           <i class="iconfont icon-shanchu" @click="removeHistory('historyList')"></i>
         </div>
         <div class="history-list">
-          <div class="history-item" v-for="(item, index) in historyList" :key="index" @click="searchHis(item)">{{ item }}</div>
+          <div class="history-item" v-for="(item, index) in historyList" :key="index" @click="searchEnter(item)">{{ item }}</div>
         </div>
-      </div> -->
+      </div>
       <div class="hot-wrap">
         <div class="hot-header">
           <div class="hot-title">热搜榜</div>
@@ -43,7 +41,7 @@
       </div>
     </template>
     <template v-else-if="searchType == 2">
-      <!-- <ul class="result-wrap">
+      <ul class="result-wrap">
         <li class="result-item" v-for="item in resultList" :key="item.id">
           <div class="result-info">
             <p class="result-name">
@@ -59,10 +57,10 @@
             <i class="iconfont icon-shipin" @click="play(item)"></i>
           </div>
         </li>
-      </ul> -->
+      </ul>
     </template>
     <template v-else-if="searchType == 3">
-      <!-- <ul class="result-wrap" v-if="searchName">
+      <ul class="result-wrap" v-if="searchName">
         <li class="search-tips" @click="search()">
           搜索"{{ searchName }}"
         </li>
@@ -70,7 +68,7 @@
           <i class="iconfont icon-sousuo"></i>
           <span>{{ item.keyword }}</span>
         </li>
-      </ul> -->
+      </ul>
     </template>
   </div>
 </template>
@@ -85,11 +83,21 @@ export default {
     const searchName = ref('')
     const searchType = ref(1)
     const { hotList } = useSearchHot()
+    const { searchList, inputSearch } = useSearchList(searchName, searchType)
+    const { resultList, clearSearch, searchEnter, search, historyList, removeHistory } = useResultList(searchName, searchType)
 
     return {
       searchName,
       searchType,
-      hotList
+      hotList,
+      searchList,
+      inputSearch,
+      resultList,
+      clearSearch,
+      searchEnter,
+      search,
+      historyList,
+      removeHistory
     }
   }
 }
@@ -104,6 +112,88 @@ function useSearchHot () {
     })
   })
   return toRefs(state)
+}
+
+function useSearchList (searchName, searchType) {
+  const state = reactive({
+    searchList: []
+  })
+  const { searchList } = toRefs(state)
+  const inputSearch = () => {
+    if (searchName.value) {
+        axios.get(`/search/suggest?keywords=${searchName.value}&type=mobile`).then(res => {
+          var data = res.data.result
+          searchList.value = data.allMatch
+          searchType.value = 3
+        })
+      } else {
+        searchType.value = 1
+      }
+  }
+  return {
+    searchList,
+    inputSearch
+  }
+}
+
+function useResultList (searchName, searchType) {
+  const state = reactive({
+    resultList: [],
+    historyList: []
+  })
+  const { resultList, historyList } = toRefs(state)
+  const clearSearch = () => {
+    searchName.value = ""
+    searchType.value = 1
+  }
+  const searchEnter = keyword => {
+    searchName.value = keyword
+    search()
+  }
+  const search = () => {
+    console.log(state)
+    state.historyList.unshift(searchName.value)
+    state.historyList = [...new Set(state.historyList)]
+    setStorage('historyList', state.historyList)
+    axios.get(`/search?keywords=${searchName.value}`).then(res => {
+      var data = res.data.result
+      state.resultList = data.songs
+      searchType.value = 2
+    })
+  }
+  onMounted(() => {
+    getStorage('historyList', res => {
+      if (res) {
+        state.historyList = res
+      }
+    })
+  })
+  const removeHistory = key => {
+    removeStorage(key, res => {
+      console.log('success')
+      state.historyList = []
+    })
+  }
+  return {
+    resultList,
+    clearSearch,
+    searchEnter,
+    search,
+    historyList,
+    removeHistory
+  }
+}
+
+function setStorage (key, data) {
+  window.localStorage.setItem(key, JSON.stringify(data))
+}
+function  getStorage (key, success) {
+  var data = window.localStorage.getItem(key)
+  success( JSON.parse(data) )
+}
+function removeStorage (key, success) {
+  window.localStorage.clear(key)
+  success()
 }
 </script>
 <style>
